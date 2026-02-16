@@ -1,4 +1,3 @@
-from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 import sys
@@ -38,5 +37,3 @@ def train(model, X_train, y_train, X_val, y_val, epochs=50, batch_size=64, seed=
         print(f"epoch {ep:03d} | train_loss={train_loss:.4f} | val_loss={val_loss:.4f} | val_acc={val_acc:.4f}")
 
     return history
-
-
