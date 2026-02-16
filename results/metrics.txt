@@ -1,27 +1,27 @@
-MODEL: MLPBinary
-FEATURES: [neg, neu, pos, compound, tb_polarity, tb_subjectivity]
-THRESHOLD: 0.50
+    MODEL: MLPBinary
+    FEATURES: [neg, neu, pos, compound, tb_polarity, tb_subjectivity]
+    THRESHOLD: 0.50
 
-HYPERPARAMS:
-- number of hidden neurons: 16
-- learning_rate: 0.01
-- batch_size: 64
-- epochs: 50
-- seed: 0
+    HYPERPARAMS:
+    - number of hidden neurons: 16
+    - learning_rate: 0.01
+    - batch_size: 64
+    - epochs: 50
+    - seed: 0
 
-SPLIT SIZES:
-- train: 17500
-- val: 3750
-- test: 3750
+    SPLIT SIZES:
+    - train: 17500
+    - val: 3750
+    - test: 3750
 
-TEST METRICS:
-- accuracy: 0.785
-- precision (pos): 0.788
-- recall (pos): 0.783
-- f1 (pos): 0.786
+    TEST METRICS:
+    - accuracy: 0.785
+    - precision (pos): 0.788
+    - recall (pos): 0.783
+    - f1 (pos): 0.786
 
-CONFUSION MATRIX:
-- TN: 2932
-- FP: 818
-- FN: 795
-- TP: 2955
+    CONFUSION MATRIX:
+    - TN: 2932
+    - FP: 818
+    - FN: 795
+    - TP: 2955
