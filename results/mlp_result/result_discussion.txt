@@ -1,0 +1,25 @@
+RESULTS DISCUSSION — IMDB Sentiment
+
+1) Overall performance
+The MLP achieved 0.785 test accuracy with balanced precision (0.788) and recall (0.783), giving
+an F1-score of 0.786. This indicates the model is not only correct often, but also keeps a reasonable
+balance between false positives and false negatives for the positive class.
+
+2) Confusion matrix interpretation
+- True Negatives (TN = 2932) and True Positives (TP = 2955) are high and similar in size, meaning the
+model correctly classifies both negative and positive reviews at a comparable rate.
+- False Positives (FP = 818): these are negative reviews predicted as positive. This suggests that some
+negative reviews contain positive looking words or mixed sentiment that the feature set interprets as positive.
+- False Negatives (FN = 795): these are positive reviews predicted as negative. This can happen when positive
+reviews include sarcasm, negation (“not bad”), or complex phrasing that is not fully captured by polarity features.
+
+3) Loss curves (training vs validation)
+The loss curves decrease rapidly during the first ~10–15 epochs, then flatten. Training and validation losses
+stay close throughout, with validation slightly above training. This pattern shows stable learning and
+limited overfitting: the model improves and then reaches a plateau where additional epochs provide minimal gains.
+
+4) What these results mean
+Given that the model uses only 6 sentiment features (VADER + TextBlob) rather than embeddings, the performance
+is reasonable. The model captures general sentiment well, but struggles with
+cases where sentiment depends on context (sarcasm, negation...), which is expected with
+polarity-based features.

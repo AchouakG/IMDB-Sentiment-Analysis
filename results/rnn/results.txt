@@ -1,0 +1,17 @@
+Model            : rnn
+Best val accuracy: 0.5047
+Final val loss   : 0.6931
+
+Classification Report:
+              precision    recall  f1-score   support
+
+         0.0       0.51      0.18      0.27      3750
+         1.0       0.50      0.83      0.62      3750
+
+    accuracy                           0.50      7500
+   macro avg       0.51      0.50      0.45      7500
+weighted avg       0.51      0.50      0.45      7500
+
+Confusion Matrix:
+[[ 688 3062]
+ [ 654 3096]]
