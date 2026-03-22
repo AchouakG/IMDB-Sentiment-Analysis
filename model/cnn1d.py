@@ -1,34 +1,29 @@
 import numpy as np
 
 class CNN1DBinary:
-    """
-    Embedding → Conv1D → GlobalMaxPool → Dense → Sigmoid
-    One filter size, multiple filters, same style as your MLP/RNN.
-    """
-    def __init__(self, vocab_size, embed_dim=32, n_filters=64,
-                 kernel_size=3, learning_rate=0.01, seed=0):
+    def __init__(self, vocab_size, embed_dim=32, n_filters=64, kernel_size=3, learning_rate=0.01, seed=0):
         rng = np.random.default_rng(seed)
 
-        # embedding
         self.E = rng.normal(0, 0.01, (vocab_size, embed_dim)).astype(np.float32)
 
-        # conv filters: (kernel_size, embed_dim, n_filters)
-        # each filter slides along the sequence and looks at kernel_size words at once
-        self.F  = rng.normal(0, np.sqrt(2/(kernel_size*embed_dim)),
-                             (kernel_size, embed_dim, n_filters)).astype(np.float32)
+        self.F = rng.normal(
+            0,
+            np.sqrt(2 / (kernel_size * embed_dim)),
+            (kernel_size, embed_dim, n_filters)
+        ).astype(np.float32)
         self.bf = np.zeros((1, n_filters), dtype=np.float32)
 
-        # output layer
-        self.W2 = rng.normal(0, np.sqrt(1/n_filters),
-                             (n_filters, 1)).astype(np.float32)
+        self.W2 = rng.normal(
+            0,
+            np.sqrt(1 / n_filters),
+            (n_filters, 1)
+        ).astype(np.float32)
         self.b2 = np.zeros((1, 1), dtype=np.float32)
 
         self.learning_rate = learning_rate
-        self.kernel_size   = kernel_size
-        self.n_filters     = n_filters
-        self.embed_dim     = embed_dim
-
-    # ── activations ──────────────────────────────────────────────────────────
+        self.kernel_size = kernel_size
+        self.n_filters = n_filters
+        self.embed_dim = embed_dim
 
     @staticmethod
     def relu(z):
@@ -47,44 +42,32 @@ class CNN1DBinary:
         p = np.clip(p, 1e-7, 1 - 1e-7)
         return float(-(y * np.log(p) + (1 - y) * np.log(1 - p)).mean())
 
-    # ── forward ──────────────────────────────────────────────────────────────
-
     def forward(self, X_ids):
-        # X_ids: (batch, seq_len)
         batch, seq_len = X_ids.shape
         k = self.kernel_size
 
-        embeds = self.E[X_ids]           # (batch, seq_len, embed_dim)
+        embeds = self.E[X_ids]
 
-        # --- Conv1D ---
-        # output length after convolution (no padding)
-        out_len = seq_len - k + 1        # e.g. 200 - 3 + 1 = 198
-
+        out_len = seq_len - k + 1
         Z_conv = np.zeros((batch, out_len, self.n_filters), dtype=np.float32)
 
         for t in range(out_len):
-            window = embeds[:, t:t+k, :]         # (batch, k, embed_dim)
-            # flatten window and dot with filters
+            window = embeds[:, t:t+k, :]
             Z_conv[:, t, :] = (
-                window.reshape(batch, -1) @        # (batch, k*embed_dim)
-                self.F.reshape(-1, self.n_filters) # (k*embed_dim, n_filters)
+                window.reshape(batch, -1) @
+                self.F.reshape(-1, self.n_filters)
             ) + self.bf
 
-        A_conv = self.relu(Z_conv)       # (batch, out_len, n_filters)
+        A_conv = self.relu(Z_conv)
 
-        # --- GlobalMaxPool ---
-        # take the max activation across the sequence for each filter
-        pool_idx = A_conv.argmax(axis=1) # (batch, n_filters) — which position fired
-        pooled   = A_conv.max(axis=1)    # (batch, n_filters)
+        pool_idx = A_conv.argmax(axis=1)
+        pooled = A_conv.max(axis=1)
 
-        # --- output layer ---
-        z2 = pooled @ self.W2 + self.b2  # (batch, 1)
-        p  = self.sigmoid(z2)
+        z2 = pooled @ self.W2 + self.b2
+        p = self.sigmoid(z2)
 
         cache = (X_ids, embeds, Z_conv, A_conv, pooled, pool_idx, p)
         return p, cache
-
-    # ── backward ─────────────────────────────────────────────────────────────
 
     def step(self, cache, y):
         X_ids, embeds, Z_conv, A_conv, pooled, pool_idx, p = cache
@@ -92,52 +75,44 @@ class CNN1DBinary:
         k = self.kernel_size
         out_len = seq_len - k + 1
 
-        # output layer gradients
-        dz2  = (p - y) / batch                    # (batch, 1)
-        dW2  = pooled.T @ dz2                     # (n_filters, 1)
-        db2  = dz2.sum(axis=0, keepdims=True)
-        d_pooled = dz2 @ self.W2.T               # (batch, n_filters)
+        dz2 = (p - y) / batch
+        dW2 = pooled.T @ dz2
+        db2 = dz2.sum(axis=0, keepdims=True)
+        d_pooled = dz2 @ self.W2.T
 
-        # GlobalMaxPool backward
-        # gradient only flows through the position that was the max
-        dA_conv = np.zeros_like(A_conv)           # (batch, out_len, n_filters)
-        b_idx   = np.arange(batch)[:, None]       # (batch, 1)
-        f_idx   = np.arange(self.n_filters)[None, :]  # (1, n_filters)
+        dA_conv = np.zeros_like(A_conv)
+        b_idx = np.arange(batch)[:, None]
+        f_idx = np.arange(self.n_filters)[None, :]
         dA_conv[b_idx, pool_idx, f_idx] = d_pooled
 
-        # ReLU backward
-        dZ_conv = dA_conv * self.relu_grad(Z_conv)  # (batch, out_len, n_filters)
+        dZ_conv = dA_conv * self.relu_grad(Z_conv)
 
-        # Conv1D backward
-        dF = np.zeros_like(self.F)                # (k, embed_dim, n_filters)
-        dE = np.zeros_like(self.E)                # (vocab_size, embed_dim)
+        dF = np.zeros_like(self.F)
+        dE = np.zeros_like(self.E)
         dbf = dZ_conv.sum(axis=(0, 1), keepdims=False).reshape(1, -1)
 
-        F_flat = self.F.reshape(-1, self.n_filters)  # (k*embed_dim, n_filters)
+        F_flat = self.F.reshape(-1, self.n_filters)
 
         for t in range(out_len):
-            window  = embeds[:, t:t+k, :]             # (batch, k, embed_dim)
-            dz_t    = dZ_conv[:, t, :]                # (batch, n_filters)
+            window = embeds[:, t:t+k, :]
+            dz_t = dZ_conv[:, t, :]
 
-            # gradient w.r.t. filters
-            dF += (window.reshape(batch, -1).T @ dz_t).reshape(k, self.embed_dim, self.n_filters)
+            dF += (window.reshape(batch, -1).T @ dz_t).reshape(
+                k, self.embed_dim, self.n_filters
+            )
 
-            # gradient w.r.t. embeddings
             d_window = (dz_t @ F_flat.T).reshape(batch, k, self.embed_dim)
             for ki in range(k):
-                np.add.at(dE, X_ids[:, t+ki], d_window[:, ki, :])
+                np.add.at(dE, X_ids[:, t + ki], d_window[:, ki, :])
 
-        # clip gradients
         for grad in [dF, dbf, dW2, db2, dE]:
             np.clip(grad, -5, 5, out=grad)
 
-        self.F  -= self.learning_rate * dF
+        self.F -= self.learning_rate * dF
         self.bf -= self.learning_rate * dbf
         self.W2 -= self.learning_rate * dW2
         self.b2 -= self.learning_rate * db2
-        self.E  -= self.learning_rate * dE
-
-    # ── inference ─────────────────────────────────────────────────────────────
+        self.E -= self.learning_rate * dE
 
     def predict_probability(self, X_ids):
         p, _ = self.forward(X_ids)

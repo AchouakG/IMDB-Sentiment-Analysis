@@ -37,21 +37,19 @@ class RNNBinary:
         return float(-(y * np.log(p) + (1 - y) * np.log(1 - p)).mean())
 
     def forward(self, X_ids):
-        # X_ids: (batch, seq_len) integer token ids
         batch, seq_len = X_ids.shape
-        embeds = self.E[X_ids]  # (batch, seq_len, embed_dim)
+        embeds = self.E[X_ids]
 
         h = np.zeros((batch, self.hidden_dim), dtype=np.float32)
         hs, zs = [], []
 
         for t in range(seq_len):
-            x_t = embeds[:, t, :]               # (batch, embed_dim)
+            x_t = embeds[:, t, :]
             z_t = (x_t @ self.Wx) + (h @ self.Wh) + self.bh
             h   = self.tanh(z_t)
             hs.append(h)
             zs.append(z_t)
 
-        # last hidden state → output
         z2 = h @ self.W2 + self.b2
         p  = self.sigmoid(z2)
 
@@ -69,17 +67,15 @@ class RNNBinary:
         dbh = np.zeros_like(self.bh)
         dE  = np.zeros_like(self.E)
 
-        # output layer grad
         dz2 = (p - y) / batch
         dW2 = hs[-1].T @ dz2
         db2 = dz2.sum(axis=0, keepdims=True)
 
-        dh_next = dz2 @ self.W2.T  # gradient flowing back into last hidden state
+        dh_next = dz2 @ self.W2.T
 
-        # BPTT — unroll backwards through time
         for t in reversed(range(seq_len)):
             dh   = dh_next
-            dz_t = dh * self.tanh_grad(zs[t])   # through tanh
+            dz_t = dh * self.tanh_grad(zs[t])
 
             dWx += embeds[:, t, :].T @ dz_t
             dbh += dz_t.sum(axis=0, keepdims=True)
@@ -89,11 +85,10 @@ class RNNBinary:
             else:
                 dh_next  = np.zeros_like(dh_next)
 
-            # gradient into embedding
-            dx_t = dz_t @ self.Wx.T              # (batch, embed_dim)
-            np.add.at(dE, X_ids[:, t], dx_t)    # scatter back to vocab
+            dx_t = dz_t @ self.Wx.T
+            np.add.at(dE, X_ids[:, t], dx_t)
 
-        # clip gradients to avoid exploding (common in RNNs)
+        # gradient clipping
         for grad in [dWx, dWh, dbh, dW2, db2, dE]:
             np.clip(grad, -5, 5, out=grad)
 
