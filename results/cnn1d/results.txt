@@ -1,0 +1,17 @@
+Model            : cnn1d
+Best val accuracy: 0.5055
+Final val loss   : 0.8114
+
+Classification Report:
+              precision    recall  f1-score   support
+
+         0.0       0.51      0.45      0.48      3750
+         1.0       0.50      0.56      0.53      3750
+
+    accuracy                           0.51      7500
+   macro avg       0.51      0.51      0.50      7500
+weighted avg       0.51      0.51      0.50      7500
+
+Confusion Matrix:
+[[1700 2050]
+ [1659 2091]]
